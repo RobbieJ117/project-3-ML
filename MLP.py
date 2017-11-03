@@ -40,11 +40,8 @@ class MLP(object):
 
 
 
-    def gradient_descent(self, X, Y, batch_size):
-        '''
-                The below block of code splits the data into smaller batches so that
-                gradient descent and weight update can be done in batches
-                '''
+    def backprop(self, X, Y, batch_size):
+
         # if the number of data points can be evenly divided by the batch size
 
         if (len(Y) % batch_size == 0):
@@ -52,14 +49,21 @@ class MLP(object):
         # if the number of data points in X can not be evenly divided by the batch size
         else:
             num_batches = (len(Y) // batch_size) + 1
+        #This loop repeats for each batch
         for i in range(0, num_batches):
-            # if it is the last batch, do not define array ending index
+            '''
+            The below block of code splits the data into smaller batches so that
+            gradient descent and weight update can be done in batches
+            '''
 
             for j in range(0, self.epochs):
+                # if it is the last batch, do not define array ending index
                 if (i == (num_batches - 1)):
+                    batch_X = X[(batch_size * i):]
                     batch_Y_act = Y[(batch_size * i):]
                     batch_Y_pred = self.feed_forward(X[(batch_size * i):])
                 else:
+                    batch_X = X[(batch_size * i):((batch_size + 1) * i)]
                     batch_Y_act = Y[(batch_size * i):((batch_size + 1) * i)]
                     batch_Y_pred = self.feed_forward(X[(batch_size * i):((batch_size + 1) * i)])
                 error = metrics.mean_squared_error(batch_Y_act, batch_Y_pred)
@@ -67,9 +71,26 @@ class MLP(object):
                 if(loss<.005):
                     break
                 else:
+                    error_2 = error.dot(self.weights_ho.T)
                     self.loss_history.append(loss)
                     gradient_ho = self.samples_by_nodes.T.dot(error)
                     gradient_ho = (gradient_ho*self.ada)/len(batch_Y_act)
                     self.weights_ho += gradient_ho
+                    gradient_ih = batch_X.T.dot(error_2)
+                    gradient_ih = (gradient_ih * self.ada) / len(batch_Y_act)
+                    self.weights_ih += gradient_ih
 
+    '''
+    Prints a plot of the error versus training iterations
+    '''
 
+    def print_results(self):
+        file_name = "{}.png".format(self.id)
+        fig = plt.figure()
+        plt.plot(np.arange(0, len(self.lossHistory)), self.lossHistory)
+        fig.suptitle("Training Loss")
+        plt.xlabel("Epoch #")
+        plt.ylabel("Loss")
+        fig.savefig(file_name)
+        plt.close(fig)
+        self.lossHistory = []
