@@ -15,24 +15,26 @@ class MLP(object):
         self.h_nodes = h_nodes #number of hidden nodes
         self.out_dim = out_dim # number of output nodes
         # weights_ih are the weights from the input data vectors to the hidden layer
-        self.weights_ih = np.random.uniform(low=-.1, high = .1, size=(in_dim, h_nodes))
+        self.weights_ih = np.random.uniform(low=-.01, high = .01, size=(in_dim, h_nodes))
         # weights_ho are the weights from the hidden nodes to the output layer
-        self.weights_ho = np.random.uniform(lpw=-.1, high=.1, size=(h_nodes, out_dim))
-        self.epochs = 20 #number of iterations of weight correction steps
+        self.weights_ho = np.random.uniform(low=-.01, high=.01, size=(h_nodes, out_dim))
+        self.epochs = 10 #number of iterations of weight correction steps
         self.ada = -.1
         self.loss_history = [] #used to store error for error_vs_time graphs
+        self.batch_size = 300
+        self.iteration=0
 
 
     def feed_forward(self, X):
         #multiply inputs across first set of weights into h_nodes
-        product = X.dot(self.weights_ih)
+        self.product = X.dot(self.weights_ih)
         #apply sigmoid function to values in h_nodes
         # this matrix is used also to calculate backpropagated error
-        self.samples_by_nodes = np.tanh(product)
+        self.samples_by_nodes = np.tanh(self.product)
         # mutiply values in h_nodes across weights to output node
         # out_vector is the vector of outputs from the network
         # its dimensions are (number samples in X)x(1)
-        out_vector = product.dot(self.weights_ho)
+        out_vector = self.product.dot(self.weights_ho)
         return out_vector
 
 
@@ -40,45 +42,92 @@ class MLP(object):
 
 
 
-    def backprop(self, X, Y, batch_size):
-
+    def backprop(self, X, Y):
+        batch_X = np.array
+        batch_Y_act = np.array
+        batch_Y_pred = np.array
         # if the number of data points can be evenly divided by the batch size
-
-        if (len(Y) % batch_size == 0):
-            num_batches = len(Y) / batch_size  # number of batches given data size
+        if (len(Y) % self.batch_size == 0):
+            num_batches = len(Y) / self.batch_size  # number of batches given data size
         # if the number of data points in X can not be evenly divided by the batch size
         else:
-            num_batches = (len(Y) // batch_size) + 1
+            num_batches = (len(Y) // self.batch_size) + 1
         #This loop repeats for each batch
-        for i in range(0, num_batches):
+        num_batches = (int)(num_batches+0)
+        for i in range(0,  num_batches):
             '''
             The below block of code splits the data into smaller batches so that
             gradient descent and weight update can be done in batches
             '''
-
             for j in range(0, self.epochs):
+                print("epoch:{}\n".format(j))
                 # if it is the last batch, do not define array ending index
                 if (i == (num_batches - 1)):
-                    batch_X = X[(batch_size * i):]
-                    batch_Y_act = Y[(batch_size * i):]
-                    batch_Y_pred = self.feed_forward(X[(batch_size * i):])
+                    batch_X = self.batch_split(X, i, 0)
+                    batch_Y_act = self.batch_split(Y, i, 0)
+                    batch_Y_pred = self.feed_forward(batch_X)
                 else:
-                    batch_X = X[(batch_size * i):((batch_size + 1) * i)]
-                    batch_Y_act = Y[(batch_size * i):((batch_size + 1) * i)]
-                    batch_Y_pred = self.feed_forward(X[(batch_size * i):((batch_size + 1) * i)])
-                error = metrics.mean_squared_error(batch_Y_act, batch_Y_pred)
-                loss = np.sum(error)
-                if(loss<.005):
-                    break
-                else:
-                    error_2 = error.dot(self.weights_ho.T)
+                    batch_X = self.batch_split(X, i, 1)
+                    batch_Y_act = self.batch_split(Y, i, 1)
+                    batch_Y_pred = self.feed_forward(batch_X)
+                error_1 = (batch_Y_act-batch_Y_pred)
+                error_2 = (((batch_Y_act - batch_Y_pred))**2)/len(batch_X)
+                loss = .5*np.sum(error_2)
+                print("Teeest\n\n")
+                print(error_1)
+                if(loss>.05):
+                    #The below applies gradient descent for each batch for each epoch
                     self.loss_history.append(loss)
-                    gradient_ho = self.samples_by_nodes.T.dot(error)
-                    gradient_ho = (gradient_ho*self.ada)/len(batch_Y_act)
-                    self.weights_ho += gradient_ho
-                    gradient_ih = batch_X.T.dot(error_2)
-                    gradient_ih = (gradient_ih * self.ada) / len(batch_Y_act)
-                    self.weights_ih += gradient_ih
+                    # derivative of the hidden layer
+                    temp = np.ndarray(shape=(self.samples_by_nodes.shape))
+                    temp.fill(1)
+                    h_deriv = temp - np.tanh(np.tanh(self.samples_by_nodes))
+                    d3 = np.multiply(, batch_Y_pred)
+                    dJdW2 = np.dot(self.samples_by_nodes.T, d3)
+                    #dJdW2 = np.dot(h_deriv.T, d3)
+                    #d2 = np.dot(self.samples_by_nodes, self.weights_ho.T)
+                    d2 = np.dot(d3, self.weights_ho.T)*h_deriv
+                    dJdW1 = np.dot(batch_X.T, d2)
+                    self.weights_ih += self.ada*dJdW1
+                    self.weights_ho += self.ada*dJdW2
+                    self.iteration+=1
+                else:
+                    j+=1
+
+    def batch_split(self, X, i, switch):
+        start = (self.batch_size * i)
+        end = ((self.batch_size *(1+ i)))
+        if(switch==0):
+            temp = X[start:]
+            return temp
+        else:
+            temp = X[start:end]
+            return temp
+
+    def test(self, X, Y):
+        i = self.iteration-1
+        G = self.feed_forward(X)
+        print(Y)
+        print(G)
+        mae = metrics.mean_absolute_error(Y, G)
+        rmse = metrics.mean_squared_error(Y, G)
+        rmse = math.sqrt(rmse)
+        mean_y = Y[10:20]
+        mean_g = G[10:20]
+        A = np.hstack((X,G)) #set of vectors of predicted points
+        B = np.hstack((X,Y)) #set of vectors for actual points
+        res = 1 - np.dot(A / np.linalg.norm(A, axis=1)[..., None], (B / np.linalg.norm(B, axis=1)[..., None]).T)# compute cosine distance between vectors
+        cos_dist = res.mean()# mean cosine distance
+        reults_string = "\nIteration{}\n\nRMSE:{}\nMAE:{}\nMean Cosine similarity{}\nMean Y{}\n\n Mean G{}\n\n".format(i, rmse, mae, cos_dist, mean_y, mean_g)
+        if not os.path.isfile(self.id):
+            f = open(self.id, "w")
+            header = "{}:\nAda:{}\nEpochs:{}\nhidden nodes{}\nBatch size: {}\n".format(self.id, self.ada, self.epochs, self.h_nodes, self.batch_size)
+            f.write(header)
+        else:
+            f = open(self.id, "a")
+        f.write(reults_string)
+        f.close()
+
 
     '''
     Prints a plot of the error versus training iterations
@@ -87,7 +136,7 @@ class MLP(object):
     def print_results(self):
         file_name = "{}.png".format(self.id)
         fig = plt.figure()
-        plt.plot(np.arange(0, len(self.lossHistory)), self.lossHistory)
+        plt.plot(np.arange(0, len(self.loss_history)), self.loss_history)
         fig.suptitle("Training Loss")
         plt.xlabel("Epoch #")
         plt.ylabel("Loss")
