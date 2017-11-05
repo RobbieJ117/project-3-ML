@@ -14,7 +14,7 @@ class Data_manipulator:
         print(all_data[1])
         self.n = len(all_data)
         self.h =  self.n//2
-        normalize(all_data, )
+        #normalize(all_data)
         fold_1, fold_2 = self.shuffle_fold(all_data)
         self.fold_1_x, self.fold_1_y = self.cleave(fold_1)
         self.fold_2_x, self.fold_2_y = self.cleave(fold_2)
@@ -56,7 +56,7 @@ print(dm.fold_1_x.shape)
 print(dm.fold_1_y.shape)
 print(dm.fold_2_x.shape)
 print(dm.fold_2_y.shape)
-network = MLP.MLP("test 5", 2, 7, 1)
+network = MLP.MLP("test 1_3", 2, 7, 1)
 for i in range(0, 5):
     print('started training{}'.format(i))
     network.backprop(dm.fold_1_x, dm.fold_1_y)

@@ -18,10 +18,10 @@ class MLP(object):
         self.weights_ih = np.random.uniform(low=-.01, high = .01, size=(in_dim, h_nodes))
         # weights_ho are the weights from the hidden nodes to the output layer
         self.weights_ho = np.random.uniform(low=-.01, high=.01, size=(h_nodes, out_dim))
-        self.epochs = 10 #number of iterations of weight correction steps
-        self.ada = -.1
+        self.epochs = 20 #number of iterations of weight correction steps
+        self.ada = -.12
         self.loss_history = [] #used to store error for error_vs_time graphs
-        self.batch_size = 300
+        self.batch_size = 1000
         self.iteration=0
 
 
@@ -34,8 +34,8 @@ class MLP(object):
         # mutiply values in h_nodes across weights to output node
         # out_vector is the vector of outputs from the network
         # its dimensions are (number samples in X)x(1)
-        out_vector = self.product.dot(self.weights_ho)
-        return out_vector
+        self.out_vector = self.product.dot(self.weights_ho)
+        return self.out_vector
 
 
 
@@ -70,21 +70,23 @@ class MLP(object):
                     batch_X = self.batch_split(X, i, 1)
                     batch_Y_act = self.batch_split(Y, i, 1)
                     batch_Y_pred = self.feed_forward(batch_X)
-                error_1 = (batch_Y_act-batch_Y_pred)
-                error_2 = (((batch_Y_act - batch_Y_pred))**2)/len(batch_X)
+                error_0 = (batch_Y_act-batch_Y_pred)
+                error_1 = -1*(batch_Y_act - np.tanh(batch_Y_pred))/len(batch_X)
+                error_2 = (error_0**2)/len(batch_X)
                 loss = .5*np.sum(error_2)
-                print("Teeest\n\n")
-                print(error_1)
-                if(loss>.05):
+                if(loss>.25):
                     #The below applies gradient descent for each batch for each epoch
                     self.loss_history.append(loss)
                     # derivative of the hidden layer
                     temp = np.ndarray(shape=(self.samples_by_nodes.shape))
                     temp.fill(1)
-                    h_deriv = temp - np.tanh(np.tanh(self.samples_by_nodes))
-                    d3 = np.multiply(, batch_Y_pred)
+                    h_deriv = temp - np.multiply(np.tanh(batch_Y_pred), np.tanh(batch_Y_pred))
+                    temp = np.ndarray(shape=(self.out_vector.shape))
+                    temp.fill(1)
+                    o_deriv = temp - np.multiply(np.tanh(batch_Y_pred), np.tanh(batch_Y_pred))
+                    d3 = np.multiply(error_1, o_deriv)
                     dJdW2 = np.dot(self.samples_by_nodes.T, d3)
-                    #dJdW2 = np.dot(h_deriv.T, d3)
+                    #dJdW2 = np.dot)(h_deriv.T, d3)
                     #d2 = np.dot(self.samples_by_nodes, self.weights_ho.T)
                     d2 = np.dot(d3, self.weights_ho.T)*h_deriv
                     dJdW1 = np.dot(batch_X.T, d2)
