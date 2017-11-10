@@ -18,7 +18,7 @@ class MLP(object):
         self.weights_ih = np.random.uniform(low=-.01, high = .01, size=(in_dim, h_nodes))
         # weights_ho are the weights from the hidden nodes to the output layer
         self.weights_ho = np.random.uniform(low=-.01, high=.01, size=(h_nodes, out_dim))
-        self.epochs = 20 #number of iterations of weight correction steps
+        self.epochs = 25 #number of iterations of weight correction steps
         self.ada = -.12
         self.loss_history = [] #used to store error for error_vs_time graphs
         self.batch_size = 1000
@@ -116,10 +116,11 @@ class MLP(object):
         rmse = math.sqrt(rmse)
         mean_y = Y[10:20]
         mean_g = G[10:20]
-        A = np.hstack((X,G)) #set of vectors of predicted points
-        B = np.hstack((X,Y)) #set of vectors for actual points
-        res = 1 - np.dot(A / np.linalg.norm(A, axis=1)[..., None], (B / np.linalg.norm(B, axis=1)[..., None]).T)# compute cosine distance between vectors
-        cos_dist = res.mean()# mean cosine distance
+        #A = np.hstack((X,G)) #set of vectors of predicted points
+        #B = np.hstack((X,Y)) #set of vectors for actual points
+        #res = 1 - np.dot(A / np.linalg.norm(A, axis=1)[..., None], (B / np.linalg.norm(B, axis=1)[..., None]).T)# compute cosine distance between vectors
+        #cos_dist = res.mean()# mean cosine distance
+        cos_dist = "\t Not currently implemented"
         reults_string = "\nIteration{}\n\nRMSE:{}\nMAE:{}\nMean Cosine similarity{}\nMean Y{}\n\n Mean G{}\n\n".format(i, rmse, mae, cos_dist, mean_y, mean_g)
         if not os.path.isfile(self.id):
             f = open(self.id, "w")

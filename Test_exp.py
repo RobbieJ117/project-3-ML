@@ -9,57 +9,72 @@ Creates a data manipulator class to sample, recombine and resample data
 
 '''
 class Data_manipulator:
-    def __init__(self, path):
+    def __init__(self, path, folds):
         all_data = self.load_data(path)
         print(all_data[1])
-        self.n = len(all_data)
-        self.h =  self.n//2
+        self.num_folds = folds
         #normalize(all_data)
-        fold_1, fold_2 = self.shuffle_fold(all_data)
-        self.fold_1_x, self.fold_1_y = self.cleave(fold_1)
-        self.fold_2_x, self.fold_2_y = self.cleave(fold_2)
+        self.folds_container = []
+        self.fold(all_data, folds)
+        self.num_features = len(self.folds_container[0].T)-1
+
     @numba.jit
     def load_data(self, path):
         return np.loadtxt(path, delimiter=",")  # read file into array
 
-    def print_validate(self):
-        print("\nF1X\n")
-        print(self.fold_1_x)
-        print("\nF1Y\n")
-        print(self.fold_1_y)
-        print("\nF2X\n")
-        print(self.fold_2_x)
-        print("\nF2Y\n")
-        print(self.fold_2_y)
 
-    def shuffle_fold(self, input_data):
-        np.random.shuffle(input_data)
-        f_1 = input_data[0:self.h, :]
-        f_2 = input_data[self.h:-1, :]
-        return f_1, f_2
+    def fold(self, input_data, folds):
+        self.num_folds = folds
+        fold_end_index = len(input_data)//self.num_folds
+        if(len(input_data)%self.num_folds ==0):
+            fold_end_index -= 1
+        for i in range(0, self.num_folds):
+            if(i==self.num_folds-1):
+                fold_i = input_data[(i*fold_end_index):]
+                self.folds_container.append(fold_i)
+            else:
+                fold_i = input_data[(i*fold_end_index):((i+1)*fold_end_index)]
+                self.folds_container.append(fold_i)
 
     def cleave(self, in_matrix):
         x = in_matrix[:,0:-1]
         y = in_matrix[:,-1:]
         return x, y
 
-    def recombine(self):
-        fold_1 = np.hstack((self.fold_1_x, self.fold_1_y))
-        fold_2 = np.hstack((self.fold_2_x, self.fold_2_y))
-        whole_data = np.vstack((fold_1, fold_2))
-        fold_1, fold_2 = self.shuffle_fold(whole_data)
-        self.fold_1_x, self.fold_1_y = self.cleave(fold_1)
-        self.fold_2_x, self.fold_2_y = self.cleave(fold_2)
+    def recombine(self, num_folds):
+        temp_array = self.folds_container[0]
+        for i in range(0, self.num_folds-1):
+            temp_array = np.vstack((temp_array, self.folds_container[i+1]))
+        np.random.shuffle(temp_array)
+        self.folds_container.clear()
+        self.fold(temp_array, num_folds)
 
-dm = Data_manipulator("3D_test.txt")
-print(dm.fold_1_x.shape)
-print(dm.fold_1_y.shape)
-print(dm.fold_2_x.shape)
-print(dm.fold_2_y.shape)
-network = MLP.MLP("test 1_3", 2, 7, 1)
-for i in range(0, 5):
-    print('started training{}'.format(i))
-    network.backprop(dm.fold_1_x, dm.fold_1_y)
-    network.test(dm.fold_2_x, dm.fold_2_y)
-    dm.recombine()
-network.print_results()
+class Experimenter:
+    def __init__(self, dm, mlp, training_method):
+        self.dm = dm
+        self.mlp = mlp
+        self.train_method = training_method
+        self.populatoin = []
+
+    def train(self, features, targets):
+        if (self.train_method==1):
+            self.mlp.backprop(features, targets)
+
+    def test(self, features, targets):
+        if (self.train_method==1):
+            self.mlp.test(features, targets)
+
+    def five_by_two(self):
+        for i in range(0, 5):
+            self.dm.recombine(2)
+            x1, y1 = dm.cleave(dm.folds_container[0])
+            self.train(x1, y1)
+            x2, y2 = dm.cleave(dm.folds_container[1])
+            self.test(x2, y2)
+            print("\nIteration {} complete".format(i))
+        self.mlp.print_results()
+
+dm = Data_manipulator("3D_test2.txt", 1)
+network = MLP.MLP("new format test", dm.num_features, 6, 1)
+exp_1 = Experimenter(dm, network, 1)
+exp_1.five_by_two()
