@@ -6,6 +6,7 @@ import math
 import matplotlib.pyplot as plt
 import os.path
 import numba
+from random import randint
 
 class MLP(object):
 
@@ -145,3 +146,74 @@ class MLP(object):
         fig.savefig(file_name)
         plt.close(fig)
         self.lossHistory = []
+
+
+
+    '''
+    difEvoTrain performs Differential Evolution tuning of a feedforward Neural Network
+    @param       beta: scaling factor B ϵ (0, inf), controls the amplification of differential variations (xi2-xi3).
+                   pr: probability of recombination pr ϵ (0, 1)
+           population: size of the population to be generated population ϵ (1, inf), default size is 500
+    @return the configuration of weight matrices with the best fitness
+    '''
+    def difEvoTrain(self, beta, pr, population_size=500):
+        generation = 0
+        maxGen = 10000
+        population = difEvoPopGen(population_size)
+        while(generation < maxGen):
+            for i in range(0, len(population)):
+                xit = population[i]
+                # evaluate xit fitness
+                # self.weights_ih = xit[0]
+                # self.weights_ho = xit[1]
+                # f_xit = self.feed_forward(x)
+                uit = self.difMutation(population, i, beta)
+                xit_prime = self.difCrossover(xit, uit, pr)
+                # evaluate xit_prime fitness
+                # self.weights_ih = xit_prime[0]
+                # self.weights_ho = xit_prime[1]
+                # f_xit_prime = self.feedforward(x)
+                if feedForward(xit_prime) < feedForward(xit):
+                    population[i] = xit_prime
+                else:
+                    population[i] = xit
+            generation += 1
+        # return min(fitness)
+
+
+    '''
+    difMutation is a helper method for performing Differential Evolution Mutation
+    @param population: a list of solutions
+                    i: current index being evaluated
+    @return uit: a trial vector
+    '''
+    def difMutation(self, population, i, beta):
+        xi1, xi2, xi3 = 0
+        limit = len(population)
+        while (xi1 == xi2 and xi2 == xi3 and xi3 == i):
+            xi1 = randint(0, limit)
+            xi2 = randint(0, limit)
+            xi3 = randint(0, limit)
+        uit = population[xi1] + beta*(population[xi2] - population[xi3])
+        return uit
+
+    
+    '''
+    difCrossover is a helper method for performing Differential Evolution Crossover
+    @param
+    @return
+    '''
+    def difCrossover(self, xit, uit, pr):
+        pass
+
+    
+    '''
+    difEvoPopGen is a helper method that generates a population of weight matrices to be evaluated by differential evolution
+    @param size is the number of individuals to generate
+    @return list containing size number of individuals
+
+    '''
+    def difEvoPopGen(self, size):
+        population = []
+        for i in range(0, size):
+            pass
