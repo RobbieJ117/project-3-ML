@@ -149,6 +149,8 @@ class MLP(object):
 
 
 
+################################################# DIFFERENTIAL EVOLUTION PORTION ##################################################
+
     '''
     difEvoTrain performs Differential Evolution tuning of a feedforward Neural Network
     @param       beta: scaling factor B ϵ (0, inf), controls the amplification of differential variations (xi2-xi3).
@@ -164,14 +166,16 @@ class MLP(object):
             for i in range(0, len(population)):
                 xit = population[i]
                 # evaluate xit fitness
-                # self.weights_ih = xit[0]
-                # self.weights_ho = xit[1]
+                self.weights_ih = xit[0]
+                self.weights_ho = xit[1]
+                # evaluate fitness of a single data pair, or a batch...
                 # f_xit = self.feed_forward(x)
                 uit = self.difMutation(population, i, beta)
                 xit_prime = self.difCrossover(xit, uit, pr)
                 # evaluate xit_prime fitness
-                # self.weights_ih = xit_prime[0]
-                # self.weights_ho = xit_prime[1]
+                self.weights_ih = xit_prime[0]
+                self.weights_ho = xit_prime[1]
+                # again, may need batch average fitness
                 # f_xit_prime = self.feedforward(x)
                 if feedForward(xit_prime) < feedForward(xit):
                     population[i] = xit_prime
@@ -184,27 +188,55 @@ class MLP(object):
     '''
     difMutation is a helper method for performing Differential Evolution Mutation
     @param population: a list of solutions
-                    i: current index being evaluated
+           i: current index being evaluated
+           beta: scaling factor B ϵ (0, inf)
     @return uit: a trial vector
     '''
     def difMutation(self, population, i, beta):
         xi1, xi2, xi3 = 0
         limit = len(population)
-        while (xi1 == xi2 and xi2 == xi3 and xi3 == i):
+        while(True):
             xi1 = randint(0, limit)
             xi2 = randint(0, limit)
             xi3 = randint(0, limit)
-        uit = population[xi1] + beta*(population[xi2] - population[xi3])
-        return uit
+            if not (xi1 == xi2 and xi2 == xi3 and xi3 == i):
+                break
+        uit0 = population[xi1][0] + beta*(population[xi2][0] - population[xi3][0])
+        uit1 = population[xi1][1] + beta*(population[xi2][1] - population[xi3][1])
+        return [uit0, uit1]
 
     
     '''
     difCrossover is a helper method for performing Differential Evolution Crossover
-    @param
-    @return
+    @param xit: the parent example from the population
+           uit: the trial vector created through mutation
+           pr: the probability of recombination 
+           exponential: boolean, true if exponential crossover is to be used
+    @return xit_prime: offspring of parent (xit) and trial vector (uit)
     '''
-    def difCrossover(self, xit, uit, pr):
-        pass
+    def difCrossover(self, xit, uit, pr, exponential=False):
+        if not exponential: # binomial crossover
+            # for all elements in the weight matrix, crossover if probability satisfied
+            # select j* crossover point for each weight matrix
+            jstar_x0 = randint(0, 1)
+            jstar_y0 = randint(0, 1)
+            
+            jstar_x1 = randint(0, 1)
+            jstar_y1 = randint(0, 1)
+
+            # crossover j*
+
+            # loop over the rest of the numpy array
+
+                # if number from uniform distribution of (0,1) < probability 
+                
+                # crossover uit element into xit_prime
+            
+            # return xit_prime
+            pass
+        else:               # exponential crossover
+            # to be completed if time permits
+            pass
 
     
     '''
@@ -216,4 +248,8 @@ class MLP(object):
     def difEvoPopGen(self, size):
         population = []
         for i in range(0, size):
-            pass
+            population[i] = [np.random.uniform(low=-.01, high = .01, size=(self.in_dim, self.h_nodes)),
+                                np.random.uniform(low=-.01, high=.01, size=(self.h_nodes, self.out_dim))]
+        return population
+
+############################################### END DIFFERENTIAL EVOLUTION PORTION ################################################
