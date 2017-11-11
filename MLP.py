@@ -143,3 +143,116 @@ class MLP(object):
         fig.savefig(file_name)
         plt.close(fig)
         self.lossHistory = []
+
+
+
+################################################# DIFFERENTIAL EVOLUTION PORTION ##################################################
+
+    '''
+    difEvoTrain performs Differential Evolution tuning of a feedforward Neural Network
+    @param       beta: scaling factor B ϵ (0, inf), controls the amplification of differential variations (xi2-xi3).
+                   pr: probability of recombination pr ϵ (0, 1)
+           population: size of the population to be generated population ϵ (1, inf), default size is 500
+    @return the configuration of weight matrices with the best fitness
+    '''
+    def difEvoTrain(self, beta, pr, population_size=500):
+        generation = 0
+        maxGen = 10000
+        population = difEvoPopGen(population_size)
+        while(generation < maxGen):
+            for i in range(0, len(population)):
+                xit = population[i]
+                # evaluate xit fitness
+                self.weights_ih = xit[0]
+                self.weights_ho = xit[1]
+                # evaluate fitness of a single data pair, or a batch...
+                # f_xit = self.feed_forward(x)
+                uit = self.difMutation(population, i, beta)
+                xit_prime = self.difCrossover(xit, uit, pr)
+                # evaluate xit_prime fitness
+                self.weights_ih = xit_prime[0]
+                self.weights_ho = xit_prime[1]
+                # again, may need batch average fitness
+                # f_xit_prime = self.feedforward(x)
+                if feedForward(xit_prime) < feedForward(xit):
+                    population[i] = xit_prime
+                else:
+                    population[i] = xit
+            generation += 1
+        # return min(fitness)
+
+
+    '''
+    difMutation is a helper method for performing Differential Evolution Mutation
+    @param population: a list of solutions
+           i: current index being evaluated
+           beta: scaling factor B ϵ (0, inf)
+    @return uit: a trial vector
+    '''
+    def difMutation(self, population, i, beta):
+        xi1, xi2, xi3 = 0
+        limit = len(population)
+        randint = np.random.randint
+        while(True):
+            xi1 = randint(0, limit)
+            xi2 = randint(0, limit)
+            xi3 = randint(0, limit)
+            if not (xi1 == xi2 and xi2 == xi3 and xi3 == i):
+                break
+        uit0 = population[xi1][0] + beta*(population[xi2][0] - population[xi3][0])
+        uit1 = population[xi1][1] + beta*(population[xi2][1] - population[xi3][1])
+        return [uit0, uit1]
+
+    
+    '''
+    difCrossover is a helper method for performing Differential Evolution Crossover
+    @param xit: the parent example from the population
+           uit: the trial vector created through mutation
+           pr: the probability of recombination 
+           exponential: boolean, true if exponential crossover is to be used
+    @return xit_prime: offspring of parent (xit) and trial vector (uit)
+    '''
+    def difCrossover(self, xit, uit, pr, exponential=False):
+        if not exponential: # binomial crossover
+            # for all elements in the weight matrix, crossover if probability satisfied
+            # select j* crossover point for each weight matrix
+            jstar_x0 = randint(0, len(xit[0]))
+            jstar_y0 = randint(0, len(xit[0][0]))
+            
+            jstar_x1 = randint(0, len(xit[1]))
+            jstar_y1 = randint(0, len(xit[1][0]))
+
+            # loop over the first numpy array
+            for i in range(0, len(xit[0])):
+                for j in range(0, len(xit[0][0])):
+                    # if number from uniform distribution of (0,1) < probability 
+                    if uniform(0,1) < pr:
+                        # crossover uit element into xit_prime
+                        xit[0][i][j] = uit[0][i][j]
+            # stick j* into xit_prime
+            xit[0][jstar_x0][jstar_y0] = uit[0][jstar_x0][jstar_y0]
+            # return xit_prime
+            for i in range(0, len(xit[1])):
+                for j in range(0, len(xit[1][0])):
+                    if uniform(0,1) < pr:
+                        xit[1][i][j] = xit[1][i][j]
+            xit[1][jstar_x1][jstar_y1] = uit[1][jstar_x1][jstar_y1]
+        else:               # exponential crossover
+            # to be completed if time permits
+            pass
+
+    
+    '''
+    difEvoPopGen is a helper method that generates a population of weight matrices to be evaluated by differential evolution
+    @param size is the number of individuals to generate
+    @return list containing size number of individuals
+
+    '''
+    def difEvoPopGen(self, size):
+        population = []
+        for i in range(0, size):
+            population[i] = [np.random.uniform(low=-.01, high = .01, size=(self.in_dim, self.h_nodes)),
+                                np.random.uniform(low=-.01, high=.01, size=(self.h_nodes, self.out_dim))]
+        return population
+
+############################################### END DIFFERENTIAL EVOLUTION PORTION ################################################
