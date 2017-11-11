@@ -152,44 +152,72 @@ class MLP(object):
 
     '''
     difEvoTrain performs Differential Evolution tuning of a feedforward Neural Network
-    @param       beta: scaling factor B ϵ (0, inf), controls the amplification of differential variations (xi2-xi3).
-                   pr: probability of recombination pr ϵ (0, 1)
+
+    @param X: input vector
+           Y: class / expected output vector      
+           beta: scaling factor B ϵ (0, inf), controls the amplification of differential variations (xi2-xi3).
+           pr: probability of recombination pr ϵ (0, 1)
            population: size of the population to be generated population ϵ (1, inf), default size is 500
-    @return the configuration of weight matrices with the best fitness
+
+    @return: evolved weight matrices from the configuration with the best fitness
+
     '''
-    def difEvoTrain(self, beta, pr, population_size=500):
+    def difEvoTrain(self, X, Y, beta, pr, population_size=500, batch_size=50):
+        training_batches, validation_batches, number_batches = difEvoBatching(X, Y, batch_size)
         generation = 0
         maxGen = 10000
         population = difEvoPopGen(population_size)
+        minFitness = float("inf")
+        mostFitIndividual = []
         while(generation < maxGen):
             for i in range(0, len(population)):
                 xit = population[i]
-                # evaluate xit fitness
+                ################## EVALUATE FITNESS OF XIT ####################
                 self.weights_ih = xit[0]
                 self.weights_ho = xit[1]
-                # evaluate fitness of a single data pair, or a batch...
-                # f_xit = self.feed_forward(x)
+                xit_sq_error = 0
+                for j in training_batches[batch_size%i]:
+                    xit_sq_error += (validation_batches[number_batches%i][j] - self.feed_forward(j))**2
+                mse_f_xit = xit_sq_error / batch_size
+                ###############################################################
+                ################## MUTATION THEN CROSSOVER ####################
                 uit = self.difMutation(population, i, beta)
                 xit_prime = self.difCrossover(xit, uit, pr)
-                # evaluate xit_prime fitness
+                ###############################################################
+                ############### EVALUATE FITNESS OF XIT_PRIME #################
                 self.weights_ih = xit_prime[0]
                 self.weights_ho = xit_prime[1]
-                # again, may need batch average fitness
-                # f_xit_prime = self.feedforward(x)
-                if feedForward(xit_prime) < feedForward(xit):
+                xit_prime_sq_error = 0
+                for j in training_batches[batch_size%i]:
+                    xit_prime_sq_error += (validation_batches[number_batches%i][j] - self.feed_forward(j))**2
+                mse_f_xit_prime = xit_prime_sq_error / batch_size
+                ###############################################################
+                ############# PUT MOST FIT BACK INTO POPULATION ###############
+                if mse_f_xit_prime < mse_f_xit:
                     population[i] = xit_prime
+                    if mse_f_xit_prime < minFitness:
+                        minFitness = mse_f_xit_prime
+                        mostFitIndividual = xit_prime
                 else:
                     population[i] = xit
+                    if mse_f_xit < minFitness:
+                        minFitness = mse_f_xit
+                        mostFitIndividual = xit
             generation += 1
-        # return min(fitness)
+        ############# RETURN MOST FIT OF POPULATION ################
+        self.weights_ih = mostFitIndividual[0]
+        self.weights_oh = mostFitIndividual[1]
 
 
     '''
     difMutation is a helper method for performing Differential Evolution Mutation
+
     @param population: a list of solutions
            i: current index being evaluated
            beta: scaling factor B ϵ (0, inf)
+
     @return uit: a trial vector
+
     '''
     def difMutation(self, population, i, beta):
         xi1, xi2, xi3 = 0
@@ -208,11 +236,14 @@ class MLP(object):
     
     '''
     difCrossover is a helper method for performing Differential Evolution Crossover
+
     @param xit: the parent example from the population
            uit: the trial vector created through mutation
            pr: the probability of recombination 
            exponential: boolean, true if exponential crossover is to be used
+
     @return xit_prime: offspring of parent (xit) and trial vector (uit)
+
     '''
     def difCrossover(self, xit, uit, pr, exponential=False):
         if not exponential: # binomial crossover
@@ -231,13 +262,14 @@ class MLP(object):
                     if uniform(0,1) < pr:
                         # crossover uit element into xit_prime
                         xit[0][i][j] = uit[0][i][j]
-            # stick j* into xit_prime
+            # stick j* into xit_prime[0]
             xit[0][jstar_x0][jstar_y0] = uit[0][jstar_x0][jstar_y0]
             # return xit_prime
             for i in range(0, len(xit[1])):
                 for j in range(0, len(xit[1][0])):
                     if uniform(0,1) < pr:
                         xit[1][i][j] = xit[1][i][j]
+            # stick j* into xit_prime[1]
             xit[1][jstar_x1][jstar_y1] = uit[1][jstar_x1][jstar_y1]
         else:               # exponential crossover
             # to be completed if time permits
@@ -246,8 +278,10 @@ class MLP(object):
     
     '''
     difEvoPopGen is a helper method that generates a population of weight matrices to be evaluated by differential evolution
-    @param size is the number of individuals to generate
-    @return list containing size number of individuals
+
+    @param size: the number of individuals to generate
+
+    @return population: list containing size number of individuals
 
     '''
     def difEvoPopGen(self, size):
@@ -257,4 +291,26 @@ class MLP(object):
                                 np.random.uniform(low=-.01, high=.01, size=(self.h_nodes, self.out_dim))]
         return population
 
+
+
+    def divEvoBatching(self, X, Y, batch_size=50):
+        num_batches = 0
+        training_batches = []
+        validation_batches = []
+        # GIO'S CODE FOR EASIER INTERFACING WITH BATCH SPLIT PROCESS
+        if (len(Y) % self.batch_size == 0):
+            num_batches = len(Y) / self.batch_size  # number of batches given data size
+        # if the number of data points in X can not be evenly divided by the batch size
+        else:
+            num_batches = (len(Y) // self.batch_size) + 1
+
+        for i in range(0, batch_size):     
+            if (i == (num_batches - 1)):
+                training_batches.append(self.batch_split(X, i, 0))
+                validation_batches.append(self.batch_split(Y, i, 0))
+            else:
+                training_batches.append(self.batch_split(X, i, 1))
+                validation_batches.append(self.batch_split(Y, i, 1))
+
+        return training_batches, validation_batches, num_batches
 ############################################### END DIFFERENTIAL EVOLUTION PORTION ################################################
