@@ -1,0 +1,17 @@
+Had to alter loaddata() method in DataManipulator class for each file. The delimiter (token that separates values) is different for each file
+
+-Energy:
+https://archive.ics.uci.edu/ml/datasets/Appliances+energy+prediction
+
+-CASP
+https://archive.ics.uci.edu/ml/datasets/Physicochemical+Properties+of+Protein+Tertiary+Structure
+
+-Airfoil
+https://archive.ics.uci.edu/ml/datasets/Airfoil+Self-Noise
+
+-Music/Musicplus
+https://archive.ics.uci.edu/ml/datasets/Geographical+Original+of+Music
+
+-News
+https://archive.ics.uci.edu/ml/datasets/Online+News+Popularity
+
