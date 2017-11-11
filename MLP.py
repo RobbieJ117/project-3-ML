@@ -162,11 +162,10 @@ class MLP(object):
     @return: evolved weight matrices from the configuration with the best fitness
 
     '''
-    def difEvoTrain(self, X, Y, beta, pr, population_size=500, batch_size=50):
-        training_batches, validation_batches, number_batches = difEvoBatching(X, Y, batch_size)
+    def difEvoTrain(self, X, Y, beta, pr, population_size=50, batch_size=50):
         generation = 0
-        maxGen = 10000
-        population = difEvoPopGen(population_size)
+        maxGen = 10
+        population = self.difEvoPopGen(population_size)
         minFitness = float("inf")
         mostFitIndividual = []
         while(generation < maxGen):
@@ -176,9 +175,9 @@ class MLP(object):
                 self.weights_ih = xit[0]
                 self.weights_ho = xit[1]
                 xit_sq_error = 0
-                for j in training_batches[number_batches%i]:
-                    xit_sq_error += (validation_batches[number_batches%i][j] - self.feed_forward(j))**2
-                mse_f_xit = xit_sq_error / batch_size
+                for j in range(0,len(X)):
+                    xit_sq_error += (Y[j] - self.feed_forward(X[j]))**2
+                mse_f_xit = xit_sq_error / len(X)
                 ###############################################################
                 ################## MUTATION THEN CROSSOVER ####################
                 uit = self.difMutation(population, i, beta)
@@ -188,8 +187,8 @@ class MLP(object):
                 self.weights_ih = xit_prime[0]
                 self.weights_ho = xit_prime[1]
                 xit_prime_sq_error = 0
-                for j in training_batches[number_batches%i]:
-                    xit_prime_sq_error += (validation_batches[number_batches%i][j] - self.feed_forward(j))**2
+                for j in range(0, len(X)):
+                    xit_prime_sq_error += (Y[j] - self.feed_forward(X[j]))**2
                 mse_f_xit_prime = xit_prime_sq_error / batch_size
                 ###############################################################
                 ############# PUT MOST FIT BACK INTO POPULATION ###############
@@ -204,6 +203,7 @@ class MLP(object):
                         minFitness = mse_f_xit
                         mostFitIndividual = xit
             generation += 1
+            self.loss_history.append(minFitness)
         ############# RETURN MOST FIT OF POPULATION ################
         self.weights_ih = mostFitIndividual[0]
         self.weights_oh = mostFitIndividual[1]
@@ -220,7 +220,7 @@ class MLP(object):
 
     '''
     def difMutation(self, population, i, beta):
-        xi1, xi2, xi3 = 0
+        xi1, xi2, xi3 = 0, 0, 0
         limit = len(population)
         randint = np.random.randint
         while(True):
@@ -249,6 +249,8 @@ class MLP(object):
         if not exponential: # binomial crossover
             # for all elements in the weight matrix, crossover if probability satisfied
             # select j* crossover point for each weight matrix
+            randint = np.random.randint
+
             jstar_x0 = randint(0, len(xit[0]))
             jstar_y0 = randint(0, len(xit[0][0]))
             
@@ -259,7 +261,7 @@ class MLP(object):
             for i in range(0, len(xit[0])):
                 for j in range(0, len(xit[0][0])):
                     # if number from uniform distribution of (0,1) < probability 
-                    if uniform(0,1) < pr:
+                    if np.random.uniform(0,1) < pr:
                         # crossover uit element into xit_prime
                         xit[0][i][j] = uit[0][i][j]
             # stick j* into xit_prime[0]
@@ -267,10 +269,11 @@ class MLP(object):
             # return xit_prime
             for i in range(0, len(xit[1])):
                 for j in range(0, len(xit[1][0])):
-                    if uniform(0,1) < pr:
+                    if np.random.uniform(0,1) < pr:
                         xit[1][i][j] = xit[1][i][j]
             # stick j* into xit_prime[1]
             xit[1][jstar_x1][jstar_y1] = uit[1][jstar_x1][jstar_y1]
+            return xit
         else:               # exponential crossover
             # to be completed if time permits
             pass
@@ -287,30 +290,30 @@ class MLP(object):
     def difEvoPopGen(self, size):
         population = []
         for i in range(0, size):
-            population[i] = [np.random.uniform(low=-.01, high = .01, size=(self.in_dim, self.h_nodes)),
-                                np.random.uniform(low=-.01, high=.01, size=(self.h_nodes, self.out_dim))]
+            population.append([np.random.uniform(low=-.01, high = .01, size=(self.in_dim, self.h_nodes)),
+                                np.random.uniform(low=-.01, high=.01, size=(self.h_nodes, self.out_dim))])
         return population
 
 
 
-    def divEvoBatching(self, X, Y, batch_size=50):
-        num_batches = 0
-        training_batches = []
-        validation_batches = []
-        # GIO'S CODE FOR EASIER INTERFACING WITH BATCH SPLIT PROCESS
-        if (len(Y) % self.batch_size == 0):
-            num_batches = len(Y) / self.batch_size  # number of batches given data size
-        # if the number of data points in X can not be evenly divided by the batch size
-        else:
-            num_batches = (len(Y) // self.batch_size) + 1
+    # def difEvoBatching(self, X, Y, batch_size=50):
+    #     num_batches = 0
+    #     training_batches = []
+    #     validation_batches = []
+    #     # GIO'S CODE FOR EASIER INTERFACING WITH BATCH SPLIT PROCESS
+    #     if (len(Y) % self.batch_size == 0):
+    #         num_batches = len(Y) / self.batch_size  # number of batches given data size
+    #     # if the number of data points in X can not be evenly divided by the batch size
+    #     else:
+    #         num_batches = (len(Y) // self.batch_size) + 1
 
-        for i in range(0, batch_size):     
-            if (i == (num_batches - 1)):
-                training_batches.append(self.batch_split(X, i, 0))
-                validation_batches.append(self.batch_split(Y, i, 0))
-            else:
-                training_batches.append(self.batch_split(X, i, 1))
-                validation_batches.append(self.batch_split(Y, i, 1))
+    #     for i in range(0, batch_size):     
+    #         if (i == (num_batches - 1)):
+    #             training_batches.append(self.batch_split(X, i, 0))
+    #             validation_batches.append(self.batch_split(Y, i, 0))
+    #         else:
+    #             training_batches.append(self.batch_split(X, i, 1))
+    #             validation_batches.append(self.batch_split(Y, i, 1))
 
-        return training_batches, validation_batches, num_batches
+    #     return training_batches, validation_batches, num_batches
 ############################################### END DIFFERENTIAL EVOLUTION PORTION ################################################
