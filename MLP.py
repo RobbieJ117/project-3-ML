@@ -176,7 +176,7 @@ class MLP(object):
                 self.weights_ih = xit[0]
                 self.weights_ho = xit[1]
                 xit_sq_error = 0
-                for j in training_batches[batch_size%i]:
+                for j in training_batches[number_batches%i]:
                     xit_sq_error += (validation_batches[number_batches%i][j] - self.feed_forward(j))**2
                 mse_f_xit = xit_sq_error / batch_size
                 ###############################################################
@@ -188,7 +188,7 @@ class MLP(object):
                 self.weights_ih = xit_prime[0]
                 self.weights_ho = xit_prime[1]
                 xit_prime_sq_error = 0
-                for j in training_batches[batch_size%i]:
+                for j in training_batches[number_batches%i]:
                     xit_prime_sq_error += (validation_batches[number_batches%i][j] - self.feed_forward(j))**2
                 mse_f_xit_prime = xit_prime_sq_error / batch_size
                 ###############################################################
