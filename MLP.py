@@ -6,7 +6,6 @@ import math
 import matplotlib.pyplot as plt
 import os.path
 import numba
-from random import randint
 
 class MLP(object):
 
@@ -195,6 +194,7 @@ class MLP(object):
     def difMutation(self, population, i, beta):
         xi1, xi2, xi3 = 0
         limit = len(population)
+        randint = np.random.randint
         while(True):
             xi1 = randint(0, limit)
             xi2 = randint(0, limit)
@@ -218,22 +218,27 @@ class MLP(object):
         if not exponential: # binomial crossover
             # for all elements in the weight matrix, crossover if probability satisfied
             # select j* crossover point for each weight matrix
-            jstar_x0 = randint(0, 1)
-            jstar_y0 = randint(0, 1)
+            jstar_x0 = randint(0, len(xit[0]))
+            jstar_y0 = randint(0, len(xit[0][0]))
             
-            jstar_x1 = randint(0, 1)
-            jstar_y1 = randint(0, 1)
+            jstar_x1 = randint(0, len(xit[1]))
+            jstar_y1 = randint(0, len(xit[1][0]))
 
-            # crossover j*
-
-            # loop over the rest of the numpy array
-
-                # if number from uniform distribution of (0,1) < probability 
-                
-                # crossover uit element into xit_prime
-            
+            # loop over the first numpy array
+            for i in range(0, len(xit[0])):
+                for j in range(0, len(xit[0][0])):
+                    # if number from uniform distribution of (0,1) < probability 
+                    if uniform(0,1) < pr:
+                        # crossover uit element into xit_prime
+                        xit[0][i][j] = uit[0][i][j]
+            # stick j* into xit_prime
+            xit[0][jstar_x0][jstar_y0] = uit[0][jstar_x0][jstar_y0]
             # return xit_prime
-            pass
+            for i in range(0, len(xit[1])):
+                for j in range(0, len(xit[1][0])):
+                    if uniform(0,1) < pr:
+                        xit[1][i][j] = xit[1][i][j]
+            xit[1][jstar_x1][jstar_y1] = uit[1][jstar_x1][jstar_y1]
         else:               # exponential crossover
             # to be completed if time permits
             pass
