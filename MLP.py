@@ -359,10 +359,11 @@ class MLP(object):
 
 
 ################################################# Genetic Algorithm PORTION #######################################################
+    # Refrences: https://lethain.com/genetic-algorithms-cool-name-damn-simple/
 
 #Establish the population for the Genetic Algorithm
 
-    def init_pop_GA(self, num_samples, maxgen):
+    def init_pop_ga(self, num_samples, maxgen):
         self.num_pop = (int)(4 + (3 * math.log(num_samples)))
         self.maxGen = maxgen
         for i in range(0, self.num_pop):
@@ -393,7 +394,7 @@ class MLP(object):
             # keep only the mu best individuals in the population
             del self.current_pop[self.num_pop:]
             #Add loss to loss history (for graphical display)
-            loss = self.loss_GA(features, targets)
+            loss = self.loss_ga(features, targets)
             self.loss_history.append(loss)
             #Break from loop if error is small enough
             if(self.current_pop[0][3]<.001):
@@ -414,9 +415,15 @@ class MLP(object):
                 self.parent2 = self.current_pop[i][3]
 
     def crossover_mutate_ga(self):
-        
+        lengthParent1   =   len(self.parent1)
+        lengthParent2   =   len(self.parent2)
+
+        random_selection = np.random.choice(lengthParent1)
+
+        child1       =   self.parent1[:random_selection] + self.parent2[random_selection:]
+        child2       =   self.parent2[:random_selection] + self.parent1[random_selection:]
+
         for i in range(0, self.num_chld):
-            random_selection = np.random.choice(self.num_pop)
             child1 = copy.deepcopy(self.current_pop[random_selection])
             mutation_rate = np.random.choice((0, 1, 2), p=[.3, .4, .3])
             # randomly mutates new children from each member of current population
@@ -433,10 +440,27 @@ class MLP(object):
                 child1[1] += self.ada * np.multiply(child1[1], child1[2]*np.random.choice((1, 0), size=(child1[1].shape), p=[.70,.30]))
             #add generated child to population
             self.current_pop.append(child1)
+            if (mutation_rate == 0):
+                child2[0] += self.ada * np.multiply(child2[0], child2[2] * np.random.choice((1, 0), size=(child2[0].shape),
+                                                                                            p=[.30, .70]))
+                child2[1] += self.ada * np.multiply(child2[1], child2[2] * np.random.choice((1, 0), size=(child2[1].shape),
+                                                                                            p=[.30, .70]))
+            elif (mutation_rate == 1):
+                child2[0] += self.ada * np.multiply(child2[0], child2[2] * np.random.choice((1, 0), size=(child2[0].shape),
+                                                                                            p=[.50, .50]))
+                child2[1] += self.ada * np.multiply(child2[1], child2[2] * np.random.choice((1, 0), size=(child2[1].shape),
+                                                                                            p=[.50, .50]))
+            else:
+                child2[0] += self.ada * np.multiply(child2[0], child2[2] * np.random.choice((1, 0), size=(child2[0].shape),
+                                                                                            p=[.70, .30]))
+                child2[1] += self.ada * np.multiply(child2[1], child2[2] * np.random.choice((1, 0), size=(child2[1].shape),
+                                                                                            p=[.70, .30]))
+                # add generated child to population
+            self.current_pop.append(child1)
 
 
 # Score the fitness
-    def score_fitness_GA(self, features, targets):
+    def score_fitness_ga(self, features, targets):
         #iterate over each individual in currently in the population
         for i in range(0, self.num_pop):
             self.weights_ih = self.current_pop[i][0]
@@ -446,7 +470,7 @@ class MLP(object):
             self.current_pop[i][3] = abs(error_0)
 
 # Compute the error
-    def loss_GA(self, features, targets):
+    def loss_ga(self, features, targets):
         self.weights_ih = self.current_pop[0][0]
         self.weight_ho = self.current_pop[0][1]
         error = targets - self.feed_forward(features)
