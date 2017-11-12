@@ -162,22 +162,24 @@ class MLP(object):
     @return: evolved weight matrices from the configuration with the best fitness
 
     '''
-    def difEvoTrain(self, X, Y, beta, pr, population_size=50, batch_size=50):
+    def difEvoTrain(self, X, Y, beta, pr, population_size=20, batch_size=100):
+        training_batches, validation_batches, num_batches = self.difEvoBatching(X, Y, batch_size)
         generation = 0
-        maxGen = 10
+        maxGen = 50
         population = self.difEvoPopGen(population_size)
         minFitness = float("inf")
         mostFitIndividual = []
         while(generation < maxGen):
             for i in range(0, len(population)):
                 xit = population[i]
+                random_index = np.random.randint(0, num_batches)
                 ################## EVALUATE FITNESS OF XIT ####################
                 self.weights_ih = xit[0]
                 self.weights_ho = xit[1]
                 xit_sq_error = 0
-                for j in range(0,len(X)):
-                    xit_sq_error += (Y[j] - self.feed_forward(X[j]))**2
-                mse_f_xit = xit_sq_error / len(X)
+                for j in range(0,len(training_batches[random_index])):
+                    xit_sq_error += (validation_batches[random_index][j] - self.feed_forward(training_batches[random_index][j]))**2
+                mse_f_xit = xit_sq_error / len(training_batches[random_index])
                 ###############################################################
                 ################## MUTATION THEN CROSSOVER ####################
                 uit = self.difMutation(population, i, beta)
@@ -187,9 +189,9 @@ class MLP(object):
                 self.weights_ih = xit_prime[0]
                 self.weights_ho = xit_prime[1]
                 xit_prime_sq_error = 0
-                for j in range(0, len(X)):
-                    xit_prime_sq_error += (Y[j] - self.feed_forward(X[j]))**2
-                mse_f_xit_prime = xit_prime_sq_error / batch_size
+                for j in range(0,len(training_batches[random_index])):
+                    xit_prime_sq_error += (validation_batches[random_index][j] - self.feed_forward(training_batches[random_index][j]))**2
+                mse_f_xit_prime = xit_prime_sq_error / len(training_batches[random_index])
                 ###############################################################
                 ############# PUT MOST FIT BACK INTO POPULATION ###############
                 if mse_f_xit_prime < mse_f_xit:
@@ -202,6 +204,9 @@ class MLP(object):
                     if mse_f_xit < minFitness:
                         minFitness = mse_f_xit
                         mostFitIndividual = xit
+                #### EXTRA STOP CONDITION ####
+                # if minFitness < 0.5:
+                #     generation = maxGen
             generation += 1
             self.loss_history.append(minFitness)
         ############# RETURN MOST FIT OF POPULATION ################
@@ -290,30 +295,30 @@ class MLP(object):
     def difEvoPopGen(self, size):
         population = []
         for i in range(0, size):
-            population.append([np.random.uniform(low=-.01, high = .01, size=(self.in_dim, self.h_nodes)),
-                                np.random.uniform(low=-.01, high=.01, size=(self.h_nodes, self.out_dim))])
+            population.append([np.random.uniform(low= -.1, high = .1, size=(self.in_dim, self.h_nodes)),
+                                np.random.uniform(low= -.1, high= .1, size=(self.h_nodes, self.out_dim))])
         return population
 
 
 
-    # def difEvoBatching(self, X, Y, batch_size=50):
-    #     num_batches = 0
-    #     training_batches = []
-    #     validation_batches = []
-    #     # GIO'S CODE FOR EASIER INTERFACING WITH BATCH SPLIT PROCESS
-    #     if (len(Y) % self.batch_size == 0):
-    #         num_batches = len(Y) / self.batch_size  # number of batches given data size
-    #     # if the number of data points in X can not be evenly divided by the batch size
-    #     else:
-    #         num_batches = (len(Y) // self.batch_size) + 1
+    def difEvoBatching(self, X, Y, batch_size):
+        num_batches = 0
+        training_batches = []
+        validation_batches = []
+        # GIO'S CODE FOR EASIER INTERFACING WITH BATCH SPLIT PROCESS
+        if (len(Y) % self.batch_size == 0):
+            num_batches = len(Y) / self.batch_size  # number of batches given data size
+        # if the number of data points in X can not be evenly divided by the batch size
+        else:
+            num_batches = (len(Y) // self.batch_size) + 1
 
-    #     for i in range(0, batch_size):     
-    #         if (i == (num_batches - 1)):
-    #             training_batches.append(self.batch_split(X, i, 0))
-    #             validation_batches.append(self.batch_split(Y, i, 0))
-    #         else:
-    #             training_batches.append(self.batch_split(X, i, 1))
-    #             validation_batches.append(self.batch_split(Y, i, 1))
+        for i in range(0, batch_size):     
+            if (i == (num_batches - 1)):
+                training_batches.append(self.batch_split(X, i, 0))
+                validation_batches.append(self.batch_split(Y, i, 0))
+            else:
+                training_batches.append(self.batch_split(X, i, 1))
+                validation_batches.append(self.batch_split(Y, i, 1))
 
-    #     return training_batches, validation_batches, num_batches
+        return training_batches, validation_batches, num_batches
 ############################################### END DIFFERENTIAL EVOLUTION PORTION ################################################
