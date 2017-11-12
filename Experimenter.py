@@ -23,6 +23,11 @@ class Experimenter:
             if (self.mlp.iteration==0):
                 self.mlp.init_ES(len(features), self.maxgen)
             self.mlp.train_ES(features, targets)
+        elif (self.train_method == 4):
+            # Initialize population once on first training call
+            if (self.mlp.iteration == 0):
+                self.mlp.init_pop_ga(len(features), self.maxgen)
+            self.mlp.train_ga(features, targets)
 
 
     def test(self, features, targets):
