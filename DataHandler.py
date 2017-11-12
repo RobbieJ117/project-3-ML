@@ -10,16 +10,21 @@ Creates a data manipulator class to sample, recombine and resample data
 
 '''
 class DataHandler:
-    def __init__(self, path, folds):
+    def __init__(self, path, folds, token=None):
+        self.token = token
         all_data = sk.preprocessing.maxabs_scale(self.load_data(path))
         self.num_folds = folds
         self.folds_container = []
         self.fold(all_data, folds)
         self.num_features = len(self.folds_container[0].T)-1
 
+
     @numba.jit
-    def load_data(self, path, token=None):
-        return np.loadtxt(path, delimiter=token)  # read file into array
+    def load_data(self, path):
+        if(self.token is not None):
+            return np.loadtxt(path, delimiter=self.token)  # read file into array
+        else:
+            return np.loadtxt(path)  # read file into array
 
 
     def fold(self, input_data, folds):

@@ -6,6 +6,7 @@ import math
 import matplotlib.pyplot as plt
 import os.path
 import numba
+import copy
 
 class MLP(object):
 
@@ -19,13 +20,14 @@ class MLP(object):
         # weights_ho are the weights from the hidden nodes to the output layer
         self.weights_ho = np.random.normal(loc=0.0, scale=.1, size=(h_nodes, out_dim))
         self.epochs = 3 #number of iterations of weight correction steps
-        self.ada = -.005
+        self.ada = -.1
         self.loss_history = [] #used to store error for error_vs_time graphs
         self.batch_size = 1800
         self.iteration=0
         self.product= None
         self.samples_by_nodes = None
         self.out_vector = None
+        self.current_pop = []
 
 
     def feed_forward(self, X):
@@ -134,7 +136,8 @@ class MLP(object):
     '''
 
     def print_results(self):
-        file_name = "{}.png".format(self.id)
+        out_name = self.id.replace(".txt", "")
+        file_name = "{}.png".format(out_name)
         fig = plt.figure()
         plt.plot(np.arange(0, len(self.loss_history)), self.loss_history)
         fig.suptitle("Training Loss")
@@ -158,7 +161,7 @@ class MLP(object):
     def difEvoTrain(self, beta, pr, population_size=500):
         generation = 0
         maxGen = 10000
-        population = difEvoPopGen(population_size)
+        population = self.difEvoPopGen(population_size)
         while(generation < maxGen):
             for i in range(0, len(population)):
                 xit = population[i]
@@ -174,7 +177,7 @@ class MLP(object):
                 self.weights_ho = xit_prime[1]
                 # again, may need batch average fitness
                 # f_xit_prime = self.feedforward(x)
-                if feedForward(xit_prime) < feedForward(xit):
+                if self.feed_forward(xit_prime) < self.feed_forward(xit):
                     population[i] = xit_prime
                 else:
                     population[i] = xit
@@ -203,12 +206,12 @@ class MLP(object):
         uit1 = population[xi1][1] + beta*(population[xi2][1] - population[xi3][1])
         return [uit0, uit1]
 
-    
+
     '''
     difCrossover is a helper method for performing Differential Evolution Crossover
     @param xit: the parent example from the population
            uit: the trial vector created through mutation
-           pr: the probability of recombination 
+           pr: the probability of recombination
            exponential: boolean, true if exponential crossover is to be used
     @return xit_prime: offspring of parent (xit) and trial vector (uit)
     '''
@@ -216,17 +219,18 @@ class MLP(object):
         if not exponential: # binomial crossover
             # for all elements in the weight matrix, crossover if probability satisfied
             # select j* crossover point for each weight matrix
+            randint = np.random.randint
             jstar_x0 = randint(0, len(xit[0]))
             jstar_y0 = randint(0, len(xit[0][0]))
-            
+
             jstar_x1 = randint(0, len(xit[1]))
             jstar_y1 = randint(0, len(xit[1][0]))
 
             # loop over the first numpy array
             for i in range(0, len(xit[0])):
                 for j in range(0, len(xit[0][0])):
-                    # if number from uniform distribution of (0,1) < probability 
-                    if uniform(0,1) < pr:
+                    # if number from uniform distribution of (0,1) < probability
+                    if np.random.uniform(0,1) < pr:
                         # crossover uit element into xit_prime
                         xit[0][i][j] = uit[0][i][j]
             # stick j* into xit_prime
@@ -234,14 +238,14 @@ class MLP(object):
             # return xit_prime
             for i in range(0, len(xit[1])):
                 for j in range(0, len(xit[1][0])):
-                    if uniform(0,1) < pr:
+                    if np.random.uniform(0,1) < pr:
                         xit[1][i][j] = xit[1][i][j]
             xit[1][jstar_x1][jstar_y1] = uit[1][jstar_x1][jstar_y1]
         else:               # exponential crossover
             # to be completed if time permits
             pass
 
-    
+
     '''
     difEvoPopGen is a helper method that generates a population of weight matrices to be evaluated by differential evolution
     @param size is the number of individuals to generate
@@ -251,8 +255,106 @@ class MLP(object):
     def difEvoPopGen(self, size):
         population = []
         for i in range(0, size):
-            population[i] = [np.random.uniform(low=-.01, high = .01, size=(self.in_dim, self.h_nodes)),
-                                np.random.uniform(low=-.01, high=.01, size=(self.h_nodes, self.out_dim))]
+            population[i] = [(np.random.uniform(low=-.01, high = .01, size=(self.in_dim, self.h_nodes)),
+                                np.random.uniform(low=-.01, high=.01, size=(self.h_nodes, self.out_dim)))]
         return population
 
 ############################################### END DIFFERENTIAL EVOLUTION PORTION ################################################
+
+#######################///////Evolutionary Strategies///////// ################################################
+
+    """
+    The below initializes the population for ES
+    An individual's genes are represented as a list of:
+    [input-to-hidden weights, hidden-to-output weights, individual step size, fitness score]
+    Individuals of the current population are contained in a list[] current_pop
+    """
+    def init_ES(self, num_samples, maxgen):
+        self.num_pop = (int) (4+(3*math.log(num_samples)))
+        self.num_chld = (int)(self.num_pop/2)
+        self.maxGen = maxgen
+        for i in range(0, self.num_pop):
+            step_size = np.random.normal(loc=0.0, scale=1)
+            fitness = 0
+            individual = [np.random.normal(loc=0.0, scale=.001, size=(self.in_dim, self.h_nodes)), np.random.normal(loc=0.0, scale=.01, size=(self.h_nodes, self.out_dim)), step_size, fitness]
+            self.current_pop.append(individual)
+
+    """
+    The training method consists of 4 steps that loop until the max number of generations is met
+    or the prediction error of the fittest individual is small enough
+    Selection operation used is rank based selection based on prediction error
+    The steps in this loop are:
+        1.) create offspring
+        2.) score fitness of parents and offspring
+        3.) remove all but the mu fittest individuals from the population
+        4.) improvement in error between generations
+    """
+
+    def train_ES(self, features, targets):
+        counter = 0
+        while(counter<self.maxGen):
+            self.progenate()
+            self.score_fitness(features, targets)
+            # sort the current mu + lambda population by fitness score
+            self.current_pop.sort(key=lambda x: x[3])
+            # keep only the mu best individuals in the population
+            del self.current_pop[self.num_pop:]
+            #Add loss to loss history (for graphical display)
+            loss = self.generation_loss(features, targets)
+            self.loss_history.append(loss)
+            #Break from loop if error is small enough
+            if(self.current_pop[0][3]<.001):
+                print("Broke early")
+                return
+            else:
+                self.iteration+=1
+                counter+=1
+
+    """
+    Progenate creates a the offspring of a generation
+    It uses mutation only. The weights between layers of the network represent an individual gene
+    The np.random.choice function randomly selects which genes in an individual will be mutated
+    The mutation is scaled by the individual's step size attribute
+    """
+    def progenate(self):
+        for i in range(0, self.num_chld):
+            random_selection = np.random.choice(self.num_pop)
+            child1 = copy.deepcopy(self.current_pop[random_selection])
+            mutation_rate = np.random.choice((0, 1, 2), p=[.3, .4, .3])
+            # randomly mutates new children from each member of current population
+            # and then adds them to the population
+            # For extra randomness, different mutation rates are randomly variable
+            if(mutation_rate==0):
+                child1[0] += self.ada * np.multiply(child1[0], child1[2]*np.random.choice((1, 0), size=(child1[0].shape), p=[.30, .70]))
+                child1[1] += self.ada * np.multiply(child1[1], child1[2]*np.random.choice((1, 0), size=(child1[1].shape), p=[.30, .70]))
+            elif(mutation_rate == 1):
+                child1[0] += self.ada * np.multiply(child1[0], child1[2]*np.random.choice((1, 0), size=(child1[0].shape), p=[.50, .50]))
+                child1[1] += self.ada * np.multiply(child1[1], child1[2]*np.random.choice((1, 0), size=(child1[1].shape), p=[.50, .50]))
+            else:
+                child1[0] += self.ada * np.multiply(child1[0], child1[2]*np.random.choice((1, 0), size=(child1[0].shape), p=[.70, .30]))
+                child1[1] += self.ada * np.multiply(child1[1], child1[2]*np.random.choice((1, 0), size=(child1[1].shape), p=[.70,.30]))
+            #add generated child to population
+            self.current_pop.append(child1)
+
+    """
+    Perform fitness assessment of all children and parents in a generation
+    """
+    def score_fitness(self, features, targets):
+        #iterate over each individual in currently in the population
+        for i in range(0, self.num_pop+self.num_chld):
+            self.weights_ih = self.current_pop[i][0]
+            self.weights_ho = self.current_pop[i][1]
+            #Fitness based on error. An individual's fitness score is evaluated/assigned here
+            error_0 = np.sum(targets - self.feed_forward(features))/len(features)
+            self.current_pop[i][3] = abs(error_0)
+
+    '''
+    Auxiliary method for computing error
+    '''
+    #Tracks the loss per generation. Used for graphical output
+    def generation_loss(self, features, targets):
+        self.weights_ih = self.current_pop[0][0]
+        self.weight_ho = self.current_pop[0][1]
+        error = targets - self.feed_forward(features)
+        loss = np.sum(np.multiply(error, error))/len(features)
+        return loss
