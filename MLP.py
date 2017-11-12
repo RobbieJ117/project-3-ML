@@ -364,7 +364,6 @@ class MLP(object):
 
     def init_pop_GA(self, num_samples, maxgen):
         self.num_pop = (int)(4 + (3 * math.log(num_samples)))
-        self.num_chld = (int)(self.num_pop / 2)
         self.maxGen = maxgen
         for i in range(0, self.num_pop):
             step_size = np.random.normal(loc=0.0, scale=1)
@@ -387,8 +386,7 @@ class MLP(object):
         self.score_fitness_GA(features, targets)
         while(counter<self.maxGen):
             self.selection_ga() # Select 2 parents
-            self.crossover_ga() # Perform Crossover to repopulate
-            self.mutation_ga()  # Perform Mutation
+            self.crossover_mutate() # Perform Crossover and mutation to repopulate
             self.score_fitness(features, targets)   # Rescore
             # sort the current mu + lambda population by fitness score
             self.current_pop.sort(key=lambda x: x[3])
@@ -405,21 +403,42 @@ class MLP(object):
                 self.iteration+=1
                 counter+=1
 
-    def selection_ga(features, targets):
+# Select 2 parents based off best fitness
+    def selection_ga(self):
+        self.parent1 =   self.current_pop[1][3]
+        self.parent2 =   self.current_pop[1][3]
         for i in range (0, self.num_pop):
-            parent1 = self.
+            if(self.parent1 < self.current_pop[i][3]):
+                self.parent1 = self.current_pop[i][3]
+            elif(self.parent2 < self.current_pop[i][3]):
+                self.parent2 = self.current_pop[i][3]
 
-    def crossover_ga(self, xit, uit, pr, exponential=False):
-
-
-
-    def mutation_GA(self, population, i, beta):
+    def crossover_mutate_ga(self):
         
+        for i in range(0, self.num_chld):
+            random_selection = np.random.choice(self.num_pop)
+            child1 = copy.deepcopy(self.current_pop[random_selection])
+            mutation_rate = np.random.choice((0, 1, 2), p=[.3, .4, .3])
+            # randomly mutates new children from each member of current population
+            # and then adds them to the population
+            # For extra randomness, different mutation rates are randomly variable
+            if(mutation_rate==0):
+                child1[0] += self.ada * np.multiply(child1[0], child1[2]*np.random.choice((1, 0), size=(child1[0].shape), p=[.30, .70]))
+                child1[1] += self.ada * np.multiply(child1[1], child1[2]*np.random.choice((1, 0), size=(child1[1].shape), p=[.30, .70]))
+            elif(mutation_rate == 1):
+                child1[0] += self.ada * np.multiply(child1[0], child1[2]*np.random.choice((1, 0), size=(child1[0].shape), p=[.50, .50]))
+                child1[1] += self.ada * np.multiply(child1[1], child1[2]*np.random.choice((1, 0), size=(child1[1].shape), p=[.50, .50]))
+            else:
+                child1[0] += self.ada * np.multiply(child1[0], child1[2]*np.random.choice((1, 0), size=(child1[0].shape), p=[.70, .30]))
+                child1[1] += self.ada * np.multiply(child1[1], child1[2]*np.random.choice((1, 0), size=(child1[1].shape), p=[.70,.30]))
+            #add generated child to population
+            self.current_pop.append(child1)
+
 
 # Score the fitness
     def score_fitness_GA(self, features, targets):
         #iterate over each individual in currently in the population
-        for i in range(0, self.num_pop+self.num_chld):
+        for i in range(0, self.num_pop):
             self.weights_ih = self.current_pop[i][0]
             self.weights_ho = self.current_pop[i][1]
             #Fitness based on error. An individual's fitness score is evaluated/assigned here
