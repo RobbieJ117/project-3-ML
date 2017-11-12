@@ -339,7 +339,7 @@ class MLP(object):
     """
     def score_fitness(self, features, targets):
         #iterate over each individual in currently in the population
-        for i in range(0, self.num_pop+self.num_chld):
+        for i in range(0, self.num_pop + self.num_chld):
             self.weights_ih = self.current_pop[i][0]
             self.weights_ho = self.current_pop[i][1]
             #Fitness based on error. An individual's fitness score is evaluated/assigned here
@@ -384,11 +384,11 @@ class MLP(object):
     # 8. Loop till reach max generations
     def train_ga(self, features, targets):
         counter = 0
-        self.score_fitness_GA(features, targets)
+        self.score_fitness_ga(features, targets)
         while(counter<self.maxGen):
             self.selection_ga() # Select 2 parents
-            self.crossover_mutate() # Perform Crossover and mutation to repopulate
-            self.score_fitness(features, targets)   # Rescore
+            self.crossover_mutate_ga() # Perform Crossover and mutation to repopulate
+            self.score_fitness_ga(features, targets)   # Rescore
             # sort the current mu + lambda population by fitness score
             self.current_pop.sort(key=lambda x: x[3])
             # keep only the mu best individuals in the population
@@ -406,13 +406,13 @@ class MLP(object):
 
 # Select 2 parents based off best fitness
     def selection_ga(self):
-        self.parent1 =   self.current_pop[1][3]
-        self.parent2 =   self.current_pop[1][3]
+        self.parent1 =   self.current_pop[1]
+        self.parent2 =   self.current_pop[1]
         for i in range (0, self.num_pop):
-            if(self.parent1 < self.current_pop[i][3]):
-                self.parent1 = self.current_pop[i][3]
-            elif(self.parent2 < self.current_pop[i][3]):
-                self.parent2 = self.current_pop[i][3]
+            if(self.parent1[3] < self.current_pop[i][3]):
+                self.parent1 = self.current_pop[i]
+            elif(self.parent2[3] < self.current_pop[i][3]):
+                self.parent2 = self.current_pop[i]
 
     def crossover_mutate_ga(self):
         lengthParent1   =   len(self.parent1)
@@ -423,40 +423,39 @@ class MLP(object):
         child1       =   self.parent1[:random_selection] + self.parent2[random_selection:]
         child2       =   self.parent2[:random_selection] + self.parent1[random_selection:]
 
-        for i in range(0, self.num_chld):
-            child1 = copy.deepcopy(self.current_pop[random_selection])
-            mutation_rate = np.random.choice((0, 1, 2), p=[.3, .4, .3])
-            # randomly mutates new children from each member of current population
-            # and then adds them to the population
-            # For extra randomness, different mutation rates are randomly variable
-            if(mutation_rate==0):
-                child1[0] += self.ada * np.multiply(child1[0], child1[2]*np.random.choice((1, 0), size=(child1[0].shape), p=[.30, .70]))
-                child1[1] += self.ada * np.multiply(child1[1], child1[2]*np.random.choice((1, 0), size=(child1[1].shape), p=[.30, .70]))
-            elif(mutation_rate == 1):
-                child1[0] += self.ada * np.multiply(child1[0], child1[2]*np.random.choice((1, 0), size=(child1[0].shape), p=[.50, .50]))
-                child1[1] += self.ada * np.multiply(child1[1], child1[2]*np.random.choice((1, 0), size=(child1[1].shape), p=[.50, .50]))
-            else:
-                child1[0] += self.ada * np.multiply(child1[0], child1[2]*np.random.choice((1, 0), size=(child1[0].shape), p=[.70, .30]))
-                child1[1] += self.ada * np.multiply(child1[1], child1[2]*np.random.choice((1, 0), size=(child1[1].shape), p=[.70,.30]))
-            #add generated child to population
-            self.current_pop.append(child1)
-            if (mutation_rate == 0):
-                child2[0] += self.ada * np.multiply(child2[0], child2[2] * np.random.choice((1, 0), size=(child2[0].shape),
-                                                                                            p=[.30, .70]))
-                child2[1] += self.ada * np.multiply(child2[1], child2[2] * np.random.choice((1, 0), size=(child2[1].shape),
-                                                                                            p=[.30, .70]))
-            elif (mutation_rate == 1):
-                child2[0] += self.ada * np.multiply(child2[0], child2[2] * np.random.choice((1, 0), size=(child2[0].shape),
-                                                                                            p=[.50, .50]))
-                child2[1] += self.ada * np.multiply(child2[1], child2[2] * np.random.choice((1, 0), size=(child2[1].shape),
-                                                                                            p=[.50, .50]))
-            else:
-                child2[0] += self.ada * np.multiply(child2[0], child2[2] * np.random.choice((1, 0), size=(child2[0].shape),
-                                                                                            p=[.70, .30]))
-                child2[1] += self.ada * np.multiply(child2[1], child2[2] * np.random.choice((1, 0), size=(child2[1].shape),
-                                                                                            p=[.70, .30]))
-                # add generated child to population
-            self.current_pop.append(child1)
+
+        mutation_rate = np.random.choice((0, 1, 2), p=[.3, .4, .3])
+        # randomly mutates new children from each member of current population
+        # and then adds them to the population
+        # For extra randomness, different mutation rates are randomly variable
+        if(mutation_rate==0):
+            child1[0] += self.ada * np.multiply(child1[0], child1[2]*np.random.choice((1, 0), size=(child1[0].shape), p=[.30, .70]))
+            child1[1] += self.ada * np.multiply(child1[1], child1[2]*np.random.choice((1, 0), size=(child1[1].shape), p=[.30, .70]))
+        elif(mutation_rate == 1):
+            child1[0] += self.ada * np.multiply(child1[0], child1[2]*np.random.choice((1, 0), size=(child1[0].shape), p=[.50, .50]))
+            child1[1] += self.ada * np.multiply(child1[1], child1[2]*np.random.choice((1, 0), size=(child1[1].shape), p=[.50, .50]))
+        else:
+            child1[0] += self.ada * np.multiply(child1[0], child1[2]*np.random.choice((1, 0), size=(child1[0].shape), p=[.70, .30]))
+            child1[1] += self.ada * np.multiply(child1[1], child1[2]*np.random.choice((1, 0), size=(child1[1].shape), p=[.70,.30]))
+        #add generated child to population
+        self.current_pop.append(child1)
+        if (mutation_rate == 0):
+            child2[0] += self.ada * np.multiply(child2[0], child2[2] * np.random.choice((1, 0), size=(child2[0].shape),
+                                                                                        p=[.30, .70]))
+            child2[1] += self.ada * np.multiply(child2[1], child2[2] * np.random.choice((1, 0), size=(child2[1].shape),
+                                                                                        p=[.30, .70]))
+        elif (mutation_rate == 1):
+            child2[0] += self.ada * np.multiply(child2[0], child2[2] * np.random.choice((1, 0), size=(child2[0].shape),
+                                                                                        p=[.50, .50]))
+            child2[1] += self.ada * np.multiply(child2[1], child2[2] * np.random.choice((1, 0), size=(child2[1].shape),
+                                                                                        p=[.50, .50]))
+        else:
+            child2[0] += self.ada * np.multiply(child2[0], child2[2] * np.random.choice((1, 0), size=(child2[0].shape),
+                                                                                        p=[.70, .30]))
+            child2[1] += self.ada * np.multiply(child2[1], child2[2] * np.random.choice((1, 0), size=(child2[1].shape),
+                                                                                        p=[.70, .30]))
+            # add generated child to population
+        self.current_pop.append(child1)
 
 
 # Score the fitness
