@@ -300,9 +300,15 @@ class MLP(object):
         return population
 
 
+    '''
+    difEvoBatching is a helper method that chunks the training and validation data into batches and returns them as lists
 
+    @param X, Y: training and validation sets, respectively
+           batch_size: integer size of batches to be made
+
+    @return lists for training and validation batches
+    '''
     def difEvoBatching(self, X, Y, batch_size):
-        num_batches = 0
         training_batches = []
         validation_batches = []
         # GIO'S CODE FOR EASIER INTERFACING WITH BATCH SPLIT PROCESS
@@ -320,5 +326,5 @@ class MLP(object):
                 training_batches.append(self.batch_split(X, i, 1))
                 validation_batches.append(self.batch_split(Y, i, 1))
 
-        return training_batches, validation_batches, num_batches
+        return training_batches, validation_batches
 ############################################### END DIFFERENTIAL EVOLUTION PORTION ################################################
