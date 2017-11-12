@@ -163,7 +163,7 @@ class MLP(object):
 
     '''
     def difEvoTrain(self, X, Y, beta, pr, population_size=20, batch_size=100):
-        training_batches, validation_batches, num_batches = self.difEvoBatching(X, Y, batch_size)
+        training_batches, validation_batches = self.difEvoBatching(X, Y, batch_size)
         generation = 0
         maxGen = 50
         population = self.difEvoPopGen(population_size)
@@ -172,7 +172,7 @@ class MLP(object):
         while(generation < maxGen):
             for i in range(0, len(population)):
                 xit = population[i]
-                random_index = np.random.randint(0, num_batches)
+                random_index = np.random.randint(0, len(training_batches))
                 ################## EVALUATE FITNESS OF XIT ####################
                 self.weights_ih = xit[0]
                 self.weights_ho = xit[1]
