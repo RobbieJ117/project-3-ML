@@ -17,7 +17,7 @@ class Experimenter:
         if (self.train_method==1):
             self.mlp.backprop(features, targets)
         elif(self.train_method==2):
-            self.mlp.difEvoTrain(self.beta, self.pr)
+            self.mlp.difEvoTrain(features, targets, self.beta, self.pr)
         elif(self.train_method==3):
             #Initialize population once on first training call
             if (self.mlp.iteration==0):

@@ -164,15 +164,10 @@ class MLP(object):
     def difEvoTrain(self, X, Y, beta, pr, population_size=20, batch_size=50):
         training_batches, validation_batches, num_batches = self.difEvoBatching(X, Y, batch_size)
         generation = 0
-<<<<<<< HEAD
-        maxGen = 10000
-        population = self.difEvoPopGen(population_size)
-=======
         maxGen = 50
         population = self.difEvoPopGen(population_size)
         minFitness = float("inf")
         mostFitIndividual = []
->>>>>>> difevo
         while(generation < maxGen):
             for i in range(0, len(population)):
                 xit = population[i]
@@ -192,11 +187,6 @@ class MLP(object):
                 ############### EVALUATE FITNESS OF XIT_PRIME #################
                 self.weights_ih = xit_prime[0]
                 self.weights_ho = xit_prime[1]
-<<<<<<< HEAD
-                # again, may need batch average fitness
-                # f_xit_prime = self.feedforward(x)
-                if self.feed_forward(xit_prime) < self.feed_forward(xit):
-=======
                 xit_prime_sq_error = 0
                 for j in range(0,len(training_batches[random_index])):
                     xit_prime_sq_error += (validation_batches[random_index][j] - self.feed_forward(training_batches[random_index][j]))**2
@@ -204,7 +194,6 @@ class MLP(object):
                 ###############################################################
                 ############# PUT MOST FIT BACK INTO POPULATION ###############
                 if mse_f_xit_prime < mse_f_xit:
->>>>>>> difevo
                     population[i] = xit_prime
                     if mse_f_xit_prime < minFitness:
                         minFitness = mse_f_xit_prime
@@ -214,9 +203,10 @@ class MLP(object):
                     if mse_f_xit < minFitness:
                         minFitness = mse_f_xit
                         mostFitIndividual = xit
-                #### EXTRA STOP CONDITION ####
-                # if minFitness < 0.5:
-                #     generation = maxGen
+                ## EXTRA STOP CONDITION ####
+                if minFitness < 0.01:
+                    generation = maxGen
+                    print('Early Termination.')
             generation += 1
             self.loss_history.append(minFitness)
         ############# RETURN MOST FIT OF POPULATION ################
@@ -265,10 +255,6 @@ class MLP(object):
             # for all elements in the weight matrix, crossover if probability satisfied
             # select j* crossover point for each weight matrix
             randint = np.random.randint
-<<<<<<< HEAD
-=======
-
->>>>>>> difevo
             jstar_x0 = randint(0, len(xit[0]))
             jstar_y0 = randint(0, len(xit[0][0]))
 
@@ -278,11 +264,7 @@ class MLP(object):
             # loop over the first numpy array
             for i in range(0, len(xit[0])):
                 for j in range(0, len(xit[0][0])):
-<<<<<<< HEAD
                     # if number from uniform distribution of (0,1) < probability
-=======
-                    # if number from uniform distribution of (0,1) < probability 
->>>>>>> difevo
                     if np.random.uniform(0,1) < pr:
                         # crossover uit element into xit_prime
                         xit[0][i][j] = uit[0][i][j]
@@ -312,11 +294,37 @@ class MLP(object):
     def difEvoPopGen(self, size):
         population = []
         for i in range(0, size):
-<<<<<<< HEAD
-            population[i] = [(np.random.uniform(low=-.01, high = .01, size=(self.in_dim, self.h_nodes)),
-                                np.random.uniform(low=-.01, high=.01, size=(self.h_nodes, self.out_dim)))]
+            population.append([np.random.uniform(low=-.2, high = .2, size=(self.in_dim, self.h_nodes)),
+                                np.random.uniform(low=-.2, high=.2, size=(self.h_nodes, self.out_dim))])
         return population
+    
+    '''
+    difEvoBatching is a helper method that chunks the training and validation data into batches and returns them as lists
 
+    @param X, Y: training and validation sets, respectively
+           batch_size: integer size of batches to be made
+
+    @return lists for training and validation batches
+    '''
+    def difEvoBatching(self, X, Y, batch_size):
+        training_batches = []
+        validation_batches = []
+        # GIO'S CODE FOR EASIER INTERFACING WITH BATCH SPLIT PROCESS
+        if (len(Y) % self.batch_size == 0):
+            num_batches = len(Y) / self.batch_size  # number of batches given data size
+        # if the number of data points in X can not be evenly divided by the batch size
+        else:
+            num_batches = (len(Y) // self.batch_size) + 1
+
+        for i in range(0, batch_size):     
+            if (i == (num_batches - 1)):
+                training_batches.append(self.batch_split(X, i, 0))
+                validation_batches.append(self.batch_split(Y, i, 0))
+            else:
+                training_batches.append(self.batch_split(X, i, 1))
+                validation_batches.append(self.batch_split(Y, i, 1))
+
+        return training_batches, validation_batches, num_batches
 ############################################### END DIFFERENTIAL EVOLUTION PORTION ################################################
 
 #######################///////Evolutionary Strategies///////// ################################################
@@ -538,38 +546,3 @@ class MLP(object):
 
 
 ############################################### END Genetic Algorithm PORTION #####################################################
-=======
-            population.append([np.random.uniform(low= -.1, high = .1, size=(self.in_dim, self.h_nodes)),
-                                np.random.uniform(low= -.1, high= .1, size=(self.h_nodes, self.out_dim))])
-        return population
-
-
-    '''
-    difEvoBatching is a helper method that chunks the training and validation data into batches and returns them as lists
-
-    @param X, Y: training and validation sets, respectively
-           batch_size: integer size of batches to be made
-
-    @return lists for training and validation batches
-    '''
-    def difEvoBatching(self, X, Y, batch_size):
-        training_batches = []
-        validation_batches = []
-        # GIO'S CODE FOR EASIER INTERFACING WITH BATCH SPLIT PROCESS
-        if (len(Y) % self.batch_size == 0):
-            num_batches = len(Y) / self.batch_size  # number of batches given data size
-        # if the number of data points in X can not be evenly divided by the batch size
-        else:
-            num_batches = (len(Y) // self.batch_size) + 1
-
-        for i in range(0, batch_size):     
-            if (i == (num_batches - 1)):
-                training_batches.append(self.batch_split(X, i, 0))
-                validation_batches.append(self.batch_split(Y, i, 0))
-            else:
-                training_batches.append(self.batch_split(X, i, 1))
-                validation_batches.append(self.batch_split(Y, i, 1))
-
-        return training_batches, validation_batches, num_batches
-############################################### END DIFFERENTIAL EVOLUTION PORTION ################################################
->>>>>>> difevo
